@@ -22,22 +22,40 @@ namespace TelloControlCenter.Sampliers
         {
             var setter = (Action<StickState>)para;
             var di = new DirectInput();
-            var device = di.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AllDevices).First();
-            var joystick = new Joystick(di, device.InstanceGuid);
-            joystick.Acquire();
+            var devices = di.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AllDevices);
+            Joystick joystick = null;
+            if (devices.Any())
+            {
+                joystick = new Joystick(di, devices.First().InstanceGuid);
+                joystick.Acquire();
+            }
             try
             {
                 while (true)
                 {
                     Thread.Sleep(1000 / SamplingRate);
-                    var state = joystick.GetCurrentState();
-                    var localState = new StickState
+                    StickState localState;
+                    if (joystick != null)
                     {
-                        Yaw = state.RotationZ / (float)ushort.MaxValue,
-                        Pitch = state.Y / (float)ushort.MaxValue,
-                        Roll = state.X / (float)ushort.MaxValue,
-                        Height = state.Sliders[0] / (float)ushort.MaxValue
-                    };
+                        var state = joystick.GetCurrentState();
+                        localState = new StickState
+                        {
+                            Yaw = state.RotationZ / (float)ushort.MaxValue,
+                            Pitch = state.Y / (float)ushort.MaxValue,
+                            Roll = state.X / (float)ushort.MaxValue,
+                            Height = state.Sliders[0] / (float)ushort.MaxValue
+                        };
+                    }
+                    else
+                    {
+                        localState = new StickState
+                        {
+                            Yaw = 0.5f,
+                            Pitch = 0.5f,
+                            Height = 0.5f,
+                            Roll = 0.5f
+                        };
+                    }
                     setter(localState);
                 }
             }
@@ -55,7 +73,7 @@ namespace TelloControlCenter.Sampliers
 
         public void Stop()
         {
-            if(_thread == null)
+            if (_thread == null)
             {
                 return;
             }
